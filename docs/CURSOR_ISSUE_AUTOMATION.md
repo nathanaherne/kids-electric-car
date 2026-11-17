@@ -42,3 +42,5 @@ gh secret set CURSOR_API_KEY --repo nathanaherne/kids-electric-car
 `gh` prompts for the value and does not print it. Without the secret, the workflow comments `blocked` on the issue.
 
 The same Integrations page is where the Cursor GitHub app is granted access to a repository. If the app cannot open pull requests, the issue comment shows the Cursor API error. Approve repository access there. This workflow's own token can only read the repo and write issue comments.
+
+This automation test reached a pull request.
