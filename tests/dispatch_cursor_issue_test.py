@@ -91,6 +91,18 @@ class EligibilityTest(unittest.TestCase):
         )
         self.assertEqual(result["mode"], "cursor-ready")
 
+    def test_internal_marker_is_not_dispatched(self):
+        payload = issue()
+        payload["body"] = "<!-- cursor-skip-dispatch -->\nAutomation must not run Cursor again."
+        result = agent.eligibility(
+            event_name="issues",
+            action="opened",
+            label="",
+            issue=payload,
+            manual_issue=None,
+        )
+        self.assertEqual(result["reason"], "cursor_skip_dispatch")
+
     def test_bot_issue_is_ignored(self):
         skipped = agent.eligibility(
             event_name="issues",

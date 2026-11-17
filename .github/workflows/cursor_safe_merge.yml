@@ -1,0 +1,58 @@
+name: Cursor safe merge
+
+on:
+  workflow_run:
+    workflows: ["Site CI"]
+    types: [completed]
+  issue_comment:
+    types: [created]
+  workflow_dispatch:
+    inputs:
+      pull_number:
+        description: "Pull request number to evaluate"
+        required: true
+        type: string
+
+# Runs only from the default branch. contents: write is required to merge.
+# administration is intentionally absent, so this token cannot change
+# branch protection, secrets, or repository settings.
+permissions:
+  actions: read
+  checks: read
+  contents: write
+  deployments: read
+  issues: write
+  pages: write
+  pull-requests: write
+  statuses: read
+
+concurrency:
+  group: cursor-safe-merge
+  cancel-in-progress: false
+
+jobs:
+  merge:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'workflow_run' ||
+      (github.event_name == 'issue_comment' &&
+       contains(github.event.comment.body, 'cursor-issue-agent:v1') &&
+       contains(github.event.comment.body, 'status=completed'))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Merge safe Cursor pull requests and verify Pages
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+          GITHUB_EVENT_PATH: ${{ github.event_path }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          PULL_NUMBER: ${{ inputs.pull_number }}
+          PAGES_URL: https://nathanaherne.github.io/kids-electric-car/
+        run: python3 scripts/cursor_safe_merge.py
