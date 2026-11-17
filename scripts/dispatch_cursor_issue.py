@@ -3,7 +3,8 @@
 
 This is the only dispatcher for .github/workflows/cursor_issues.yml. It uses the
 Cursor cloud agent REST API with the Actions secret CURSOR_API_KEY, and the
-workflow token for issue comments. It does not merge or deploy.
+workflow token for issue comments. It does not merge or deploy. Safe merges are
+a separate workflow on Site CI completion, and this script never opens issues.
 """
 
 from __future__ import annotations
@@ -92,6 +93,8 @@ def eligibility(
     labels = {str(item.get("name", "")).lower() for item in issue.get("labels") or []}
     if "no-cursor" in labels:
         return _skip("no_cursor", number)
+    if "<!-- cursor-skip-dispatch -->" in str(issue.get("body") or ""):
+        return _skip("cursor_skip_dispatch", number)
     actor = ((issue.get("user") or {}).get("login") or "")
     if actor == "github-actions[bot]":
         return _skip("ignore_bot_authored_issue", number)
@@ -492,7 +495,7 @@ def main() -> int:
             run_id,
             "completed",
             agent_id=agent_id,
-            detail="Pull request opened. It is not merged and nothing was deployed.",
+            detail="Pull request opened. Site CI and the safe-merge workflow decide whether it merges. This workflow does not merge or deploy.",
             links=links,
         )
         return 0
