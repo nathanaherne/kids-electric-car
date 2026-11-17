@@ -1,14 +1,44 @@
 # GitHub issue to Cursor automation
 
-This repository uses .github/workflows/cursor_issues.yml to dispatch new GitHub issues to Cursor Cloud Agents. Existing issues can be dispatched by adding the cursor-ready label or using Actions > Cursor issue implementation > Run workflow with the issue number.
+`.github/workflows/cursor_issues.yml` is the only workflow that starts a Cursor cloud agent for a GitHub issue. It dispatches `scripts/dispatch_cursor_issue.py`. A second workflow must not be added for the same event.
 
-## One-time setup (repository administrator)
-1. Ensure this repository is granted access in Cursor's GitHub integration (separate from the ChatGPT GitHub app).
-2. Create a Cursor API key at https://cursor.com/settings .
-3. Under GitHub Settings > Secrets and variables > Actions, create secret CURSOR_API_KEY for this repository.
-4. Confirm GitHub Actions is enabled. Workflow needs issue-comment write access.
-5. Label an existing open test issue cursor-ready, inspect the workflow run and linked Cursor agent, and verify a pull request is created.
+The agent opens a pull request from a new branch. The workflow does not merge and does not deploy. Whouno keeps its own engineering workflow.
 
-Cursor creates PRs for review, not direct pushes to default branch, merges, or deployments. Issue automation posts blocked when the secret is missing and links the agent when successfully dispatched. Dispatch is not proof that implementation is complete.
+## When it runs
 
-To suppress automatic work, add a no-cursor label. To retrigger after setup, remove and re-add cursor-ready or manually dispatch.
+| Trigger | Result |
+| --- | --- |
+| Issue opened or reopened | One dispatch, unless `no-cursor` is present |
+| Label `cursor-ready` added | Dispatch again after a completed, failed, or blocked run |
+| Actions → Cursor issue implementation → Run workflow | Dispatch that issue number |
+| Any other label, an edit, a pull request, or `github-actions[bot]` | No dispatch |
+
+A second event waits while the latest status is `queued` for 20 minutes or `running` for 360 minutes. Re-running the workflow is an explicit retry. Status comments are `queued`, `running`, `blocked`, `failed`, and `completed`. `running` links the Cursor agent. `completed` links the pull request.
+
+## Repositories
+
+This automation belongs on:
+
+- `nathanaherne/techaus_com_au`
+- `nathanaherne/artofgaslighting_com`
+- `nathanaherne/cruisin` (`master`)
+- `nathanaherne/nathanaherne`
+- `nathanaherne/kids-electric-car`
+
+`nathanaherne/nathanaherne_com` is a separate private repository. It does not get this workflow.
+
+## Remaining secret
+
+Whouno already has Actions secret `CURSOR_API_KEY`. GitHub does not let another repository read that value. A personal account has no account-level Actions secret, so each repository above needs its own copy. Create a user or team service-account key at [Cursor Dashboard → Integrations](https://cursor.com/dashboard/integrations). Team Admin API keys do not work.
+
+```bash
+gh secret set CURSOR_API_KEY --repo nathanaherne/techaus_com_au
+gh secret set CURSOR_API_KEY --repo nathanaherne/artofgaslighting_com
+gh secret set CURSOR_API_KEY --repo nathanaherne/cruisin
+gh secret set CURSOR_API_KEY --repo nathanaherne/nathanaherne
+gh secret set CURSOR_API_KEY --repo nathanaherne/kids-electric-car
+```
+
+`gh` prompts for the value and does not print it. Without the secret, the workflow comments `blocked` on the issue.
+
+The same Integrations page is where the Cursor GitHub app is granted access to a repository. If the app cannot open pull requests, the issue comment shows the Cursor API error. Approve repository access there. This workflow's own token can only read the repo and write issue comments.
