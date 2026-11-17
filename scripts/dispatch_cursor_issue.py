@@ -3,7 +3,8 @@
 
 This is the only dispatcher for .github/workflows/cursor_issues.yml. It uses the
 Cursor cloud agent REST API with the Actions secret CURSOR_API_KEY, and the
-workflow token for issue comments. It does not merge or deploy.
+workflow token for issue comments. It does not merge or deploy. The publish
+continuation in scripts/cursor_publish.py is the only merge and deploy path.
 """
 
 from __future__ import annotations
@@ -168,8 +169,16 @@ def render_comment(
     links: list[tuple[str, str]] | None = None,
 ) -> str:
     agent_field = f" agent={agent_id}" if agent_id else ""
+    link_fields = ""
+    if links:
+        pr_url, branch = links[0]
+        pr_match = re.search(r"/pull/(\d+)", pr_url or "")
+        if pr_match:
+            link_fields += f" pr={pr_match.group(1)}"
+        if branch:
+            link_fields += f" head={branch}"
     lines = [
-        f"<!-- cursor-issue-agent:v1 issue={issue} run={run_id} status={status}{agent_field} -->",
+        f"<!-- cursor-issue-agent:v1 issue={issue} run={run_id} status={status}{agent_field}{link_fields} -->",
         "### Cursor issue agent",
         f"- **Status:** {status}",
         f"- **Workflow run:** https://github.com/{repo}/actions/runs/{run_id}",
@@ -492,7 +501,11 @@ def main() -> int:
             run_id,
             "completed",
             agent_id=agent_id,
-            detail="Pull request opened. It is not merged and nothing was deployed.",
+            detail=(
+                "Pull request opened. The publish workflow on the default branch "
+                "merges only low-risk changes after the safety gates pass. "
+                "This dispatcher does not merge or deploy."
+            ),
             links=links,
         )
         return 0
