@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: validate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Test automation gates
+        run: python3 -m unittest tests/dispatch_cursor_issue_test.py tests/cursor_publish_test.py -v
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.3"
+      - name: Install the GitHub Pages gem set
+        run: gem install github-pages -v 232 --no-document
+      - name: Build the Jekyll site
+        env:
+          JEKYLL_ENV: production
+        run: jekyll build --destination _site
+      - name: Require the homepage
+        run: |
+          test -s _site/index.html
+          grep -q Cruisin _site/index.html

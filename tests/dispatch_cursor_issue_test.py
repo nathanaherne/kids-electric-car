@@ -177,6 +177,8 @@ class RenderingTest(unittest.TestCase):
         parsed = agent.parse_marker(body)
         self.assertEqual(parsed["status"], "completed")
         self.assertEqual(parsed["issue"], "1")
+        self.assertEqual(parsed["pr"], "9")
+        self.assertEqual(parsed["head"], "cursor/issue-1")
         self.assertIn("https://github.com/nathanaherne/techaus_com_au/pull/9", body)
         self.assertIn("https://cursor.com/agents/bc-123", body)
         self.assertNotIn("CURSOR_API_KEY", body)
